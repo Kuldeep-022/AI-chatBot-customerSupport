@@ -3,7 +3,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
-import { MessageCircle, Send, AlertCircle, Clock, CheckCircle, XCircle, Plus, User, Bot, AlertTriangle } from "lucide-react";
+import { MessageCircle, Send, AlertCircle, Clock, CheckCircle, XCircle, Plus, User, Bot, AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
