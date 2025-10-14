@@ -409,7 +409,7 @@ Guidelines:
             confidence = 0.85
         else:
             # Generic helpful response
-            response_text = f"Thank you for your question. While I don't have a specific answer in my knowledge base, I'm here to help! Could you provide more details, or would you like me to escalate this to our human support team who can assist you better?"
+            response_text = "Thank you for your question. While I don't have a specific answer in my knowledge base, I'm here to help! Could you provide more details, or would you like me to escalate this to our human support team who can assist you better?"
             confidence = 0.4
             session.failed_attempts += 1
             await db.chat_sessions.update_one(
