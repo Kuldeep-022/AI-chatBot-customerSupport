@@ -351,12 +351,6 @@ async def send_message(session_id: str, message_input: MessageCreate):
         for i, faq in enumerate(relevant_faqs, 1):
             faq_context += f"{i}. Q: {faq.question}\nA: {faq.answer}\n\n"
     
-    # Get previous messages for context
-    previous_messages = await db.messages.find(
-        {"session_id": session_id},
-        {"_id": 0}
-    ).sort("timestamp", 1).to_list(100)
-    
     # Try LLM first, fallback to FAQ-based response if it fails
     response_text = None
     confidence = 0.7
