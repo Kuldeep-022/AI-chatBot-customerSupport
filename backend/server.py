@@ -357,13 +357,18 @@ async def send_message(session_id: str, message_input: MessageCreate):
         {"_id": 0}
     ).sort("timestamp", 1).to_list(100)
     
-    # Initialize LLM chat with Gemini
+    # Try LLM first, fallback to FAQ-based response if it fails
+    response_text = None
+    confidence = 0.7
+    use_llm = True
+    
     try:
         api_key = os.environ.get('GOOGLE_AI_API_KEY')
         if not api_key:
-            raise ValueError("GOOGLE_AI_API_KEY not configured")
-        
-        system_message = f"""You are a helpful customer support AI assistant. Your goal is to provide accurate, friendly, and professional support.
+            logger.warning("GOOGLE_AI_API_KEY not configured, using FAQ fallback")
+            use_llm = False
+        else:
+            system_message = f"""You are a helpful customer support AI assistant. Your goal is to provide accurate, friendly, and professional support.
 
 Guidelines:
 - Be empathetic and understanding
@@ -373,73 +378,76 @@ Guidelines:
 - Stay professional and courteous
 - Keep responses concise but informative
 {faq_context}"""
-        
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=session_id,
-            system_message=system_message
-        ).with_model("gemini", "gemini-2.5-pro-preview-05-06")
-        
-        # Send message to LLM
-        user_msg = UserMessage(text=message_input.content)
-        response_text = await chat.send_message(user_msg)
-        
-        # Calculate confidence based on FAQ match
-        confidence = 0.9 if relevant_faqs else 0.7
-        
-        # Check if response seems unhelpful (simple heuristic)
-        if len(response_text) < 20 or "I don't" in response_text or "cannot" in response_text:
-            session.failed_attempts += 1
-            confidence = 0.5
             
-            # Update failed attempts
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=session_id,
+                system_message=system_message
+            ).with_model("gemini", "gemini-2.5-pro-preview-05-06")
+            
+            # Send message to LLM
+            user_msg = UserMessage(text=message_input.content)
+            response_text = await chat.send_message(user_msg)
+            confidence = 0.9 if relevant_faqs else 0.8
+            
+    except Exception as e:
+        logger.error(f"LLM error: {str(e)}, falling back to FAQ-based response")
+        use_llm = False
+    
+    # Fallback to FAQ-based response if LLM failed or not configured
+    if not use_llm or not response_text:
+        if relevant_faqs:
+            # Use the most relevant FAQ
+            best_faq = relevant_faqs[0]
+            response_text = f"Great question! {best_faq.answer}\n\n"
+            
+            if len(relevant_faqs) > 1:
+                response_text += "You might also find these helpful:\n"
+                for i, faq in enumerate(relevant_faqs[1:], 1):
+                    response_text += f"\n{i}. **{faq.question}**: {faq.answer[:100]}..."
+            
+            confidence = 0.85
+        else:
+            # Generic helpful response
+            response_text = f"Thank you for your question. While I don't have a specific answer in my knowledge base, I'm here to help! Could you provide more details, or would you like me to escalate this to our human support team who can assist you better?"
+            confidence = 0.4
+            session.failed_attempts += 1
             await db.chat_sessions.update_one(
                 {"id": session_id},
                 {"$set": {"failed_attempts": session.failed_attempts}}
             )
-        
-        # Save assistant message
-        assistant_message = Message(
-            session_id=session_id,
-            role="assistant",
-            content=response_text,
-            metadata={"confidence": confidence, "faq_matched": len(relevant_faqs) > 0}
-        )
-        assistant_doc = assistant_message.model_dump()
-        assistant_doc['timestamp'] = assistant_doc['timestamp'].isoformat()
-        await db.messages.insert_one(assistant_doc)
-        
-        # Update session
-        session.updated_at = datetime.now(timezone.utc)
+    
+    # Check if response seems unhelpful
+    if len(response_text) < 20 or confidence < 0.5:
+        session.failed_attempts += 1
         await db.chat_sessions.update_one(
             {"id": session_id},
-            {"$set": {"updated_at": session.updated_at.isoformat()}}
+            {"$set": {"failed_attempts": session.failed_attempts}}
         )
-        
-        return ChatResponse(
-            message=assistant_message,
-            should_escalate=False,
-            confidence=confidence
-        )
-        
-    except Exception as e:
-        logger.error(f"Error generating response: {str(e)}")
-        # Fallback response
-        assistant_message = Message(
-            session_id=session_id,
-            role="assistant",
-            content="I apologize, but I'm having trouble processing your request right now. Please try again in a moment, or I can escalate this to our human support team.",
-            metadata={"error": True}
-        )
-        assistant_doc = assistant_message.model_dump()
-        assistant_doc['timestamp'] = assistant_doc['timestamp'].isoformat()
-        await db.messages.insert_one(assistant_doc)
-        
-        return ChatResponse(
-            message=assistant_message,
-            should_escalate=False,
-            confidence=0.3
-        )
+    
+    # Save assistant message
+    assistant_message = Message(
+        session_id=session_id,
+        role="assistant",
+        content=response_text,
+        metadata={"confidence": confidence, "faq_matched": len(relevant_faqs) > 0}
+    )
+    assistant_doc = assistant_message.model_dump()
+    assistant_doc['timestamp'] = assistant_doc['timestamp'].isoformat()
+    await db.messages.insert_one(assistant_doc)
+    
+    # Update session
+    session.updated_at = datetime.now(timezone.utc)
+    await db.chat_sessions.update_one(
+        {"id": session_id},
+        {"$set": {"updated_at": session.updated_at.isoformat()}}
+    )
+    
+    return ChatResponse(
+        message=assistant_message,
+        should_escalate=False,
+        confidence=confidence
+    )
 
 @api_router.post("/chat/sessions/{session_id}/escalate")
 async def escalate_session(session_id: str, escalation: EscalationRequest):
