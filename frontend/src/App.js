@@ -137,6 +137,31 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeleteSession = async (sessionId, event) => {
+    event.stopPropagation(); // Prevent session selection when clicking delete
+    
+    if (!window.confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/chat/sessions/${sessionId}`);
+      toast.success("Conversation deleted successfully");
+      
+      // If deleted session was current, clear it
+      if (currentSession?.id === sessionId) {
+        setCurrentSession(null);
+        setMessages([]);
+      }
+      
+      // Reload sessions list
+      loadSessions();
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      toast.error("Failed to delete conversation");
+    }
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
       case "active":
