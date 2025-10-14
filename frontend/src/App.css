@@ -607,3 +607,12 @@ body {
     max-width: 85%;
   }
 }
+
+/* Hide Emergent branding badge */
+[style*="position: fixed"][style*="bottom"][style*="right"],
+div[style*="Made with Emergent"],
+a[href*="emergent"] img[style*="position: fixed"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
