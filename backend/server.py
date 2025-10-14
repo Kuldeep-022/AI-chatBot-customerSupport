@@ -474,6 +474,21 @@ async def escalate_session(session_id: str, escalation: EscalationRequest):
     
     return {"success": True, "message": "Session escalated successfully"}
 
+@api_router.delete("/chat/sessions/{session_id}")
+async def delete_session(session_id: str):
+    # Check if session exists
+    session = await db.chat_sessions.find_one({"id": session_id}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Delete all messages in the session
+    await db.messages.delete_many({"session_id": session_id})
+    
+    # Delete the session
+    await db.chat_sessions.delete_one({"id": session_id})
+    
+    return {"success": True, "message": "Session deleted successfully"}
+
 # Include router
 app.include_router(api_router)
 
