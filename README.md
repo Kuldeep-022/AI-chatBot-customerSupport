@@ -334,12 +334,3 @@ Guidelines:
 ## 📄 License
 
 MIT License - Feel free to use and modify for your needs.
-
-## 👥 Contributors
-
-Built with ❤️ using Emergent AI Platform
-
----
-
-**Note**: This is a demonstration project. For production use, implement proper authentication, 
-rate limiting, monitoring, and security measures.
