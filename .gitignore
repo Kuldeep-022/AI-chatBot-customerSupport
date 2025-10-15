@@ -78,3 +78,8 @@ agenthub/agents/youtube/db
 
 # Mobile development
 android-sdk/ 
+
+.env
+.env.example
+.env.local
+.env.staging
