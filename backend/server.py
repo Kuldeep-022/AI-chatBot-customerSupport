@@ -9,15 +9,30 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+# Optional dependency: prefer emergentintegrations if available, else use local fallback
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+except Exception:  # ImportError or any runtime error
+    from llm_fallback import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB connection with fallback to in-memory storage
+mongo_available = False
+try:
+    mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+    db = client[os.environ.get('DB_NAME', 'customer_support')]
+    mongo_available = True
+except Exception as e:
+    logging.warning(f"MongoDB initialization failed: {e}")
+
+# Fallback to in-memory storage if MongoDB not available
+if not mongo_available:
+    from memory_store import InMemoryStore
+    logging.info("Using in-memory storage (data will not persist)")
+    db = InMemoryStore()
 
 # Create the main app
 app = FastAPI()
@@ -129,10 +144,15 @@ def check_escalation(message: str, session: ChatSession) -> tuple[bool, Optional
 # Initialize FAQs on startup
 @app.on_event("startup")
 async def initialize_faqs():
-    # Check if FAQs already exist
-    count = await db.faqs.count_documents({})
-    if count > 0:
-        return
+    try:
+        # Check if FAQs already exist
+        count = await db.faqs.count_documents({})
+        if count > 0:
+            logger.info(f"Found {count} existing FAQs")
+            return
+    except Exception as e:
+        logger.warning(f"Could not check FAQs: {str(e)}. Will initialize sample FAQs.")
+        # Continue to initialize FAQs
     
     # Comprehensive FAQs dataset
     sample_faqs = [
