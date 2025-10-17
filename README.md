@@ -28,7 +28,7 @@ An intelligent customer support chatbot powered by **Gemini 2.5 Pro** that simul
 ### Backend Stack
 - **FastAPI**: High-performance REST API
 - **MongoDB**: Session and message persistence
-- **Gemini 2.5 Pro**: LLM integration via emergentintegrations library
+- **Gemini 2.5 Pro**: LLM integration
 - **Python 3.11**: Modern async/await patterns
 
 ### Frontend Stack
@@ -106,23 +106,11 @@ POST   /api/faqs                           - Create new FAQ (admin)
 
 ### Gemini 2.5 Pro Configuration
 - **Model**: `gemini-2.5-pro-preview-05-06`
-- **Library**: emergentintegrations (custom wrapper)
 - **Features**:
   - Multi-turn conversation support
   - Automatic context management
   - Session-based memory
   - Streaming responses
-
-### System Prompt
-The AI is configured with the following guidelines:
-```
-- Be empathetic and understanding
-- Provide clear, concise answers
-- Use FAQ information when relevant
-- Admit when uncertain
-- Stay professional and courteous
-- Keep responses concise but informative
-```
 
 ### FAQ-Enhanced RAG
 1. User query is analyzed for keyword matches
@@ -277,22 +265,6 @@ curl -X POST https://your-backend-url.com/api/chat/sessions/{SESSION_ID}/message
 ```
 
 ## 📝 Prompts & Context
-
-### System Prompt Template
-```
-You are a helpful customer support AI assistant. Your goal is to provide accurate, 
-friendly, and professional support.
-
-Guidelines:
-- Be empathetic and understanding
-- Provide clear, concise answers
-- Use the FAQ information when relevant
-- If you don't know something, admit it honestly
-- Stay professional and courteous
-- Keep responses concise but informative
-
-{faq_context}
-```
 
 ### Conversation Context Management
 - Full conversation history passed to LLM
