@@ -2,6 +2,9 @@
 
 An intelligent customer support chatbot powered by **Gemini 2.5 Pro** that simulates customer support interactions with contextual memory, FAQ matching, and smart escalation capabilities.
 
+[!Demo video](https://drive.google.com/file/d/1AaBSEqZeLBeXDCIZqXhMExwBurcizR7b/view?usp=sharing)
+
+
 ## 🎯 Features
 
 ### Core Functionality
